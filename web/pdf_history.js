@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/* globals PDFJS, PDFView */
+/* globals PDFJS, PDFView, PresentationMode */
 
 'use strict';
 
@@ -65,7 +65,8 @@ var PDFHistory = {
         // is opened in the web viewer.
         this.reInitialized = true;
       }
-      window.history.replaceState({ fingerprint: this.fingerprint }, '');
+      window.history.replaceState({ fingerprint: this.fingerprint }, '',
+          document.URL);
     }
 
     var self = this;
@@ -202,10 +203,14 @@ var PDFHistory = {
       }
       return;
     }
-    if (this.nextHashParam && this.nextHashParam === params.hash) {
-      this.nextHashParam = null;
-      this.updatePreviousBookmark = true;
-      return;
+    if (this.nextHashParam) {
+      if (this.nextHashParam === params.hash) {
+        this.nextHashParam = null;
+        this.updatePreviousBookmark = true;
+        return;
+      } else {
+        this.nextHashParam = null;
+      }
     }
 
     if (params.hash) {
@@ -231,6 +236,22 @@ var PDFHistory = {
                                                             beforeUnload) {
     if (!(this.currentBookmark && this.currentPage)) {
       return null;
+    } else if (this.updatePreviousBookmark) {
+      this.updatePreviousBookmark = false;
+    }
+    if (this.uid > 0 && !(this.previousBookmark && this.previousPage)) {
+      // Prevent the history from getting stuck in the current state,
+      // effectively preventing the user from going back/forward in the history.
+      //
+      // This happens if the current position in the document didn't change when
+      // the history was previously updated. The reasons for this are either:
+      // 1. The current zoom value is such that the document does not need to,
+      //    or cannot, be scrolled to display the destination.
+      // 2. The previous destination is broken, and doesn't actally point to a
+      //    position within the document.
+      //    (This is either due to a bad PDF generator, or the user making a
+      //     mistake when entering a destination in the hash parameters.)
+      return null;
     }
     if ((!this.current.dest && !onlyCheckPage) || beforeUnload) {
       if (this.previousBookmark === this.currentBookmark) {
@@ -244,7 +265,7 @@ var PDFHistory = {
       return null;
     }
     var params = { hash: this.currentBookmark, page: this.currentPage };
-    if (PDFView.isPresentationMode) {
+    if (PresentationMode.active) {
       params.hash = null;
     }
     return params;
@@ -265,14 +286,15 @@ var PDFHistory = {
     if (addPrevious && !overwrite) {
       var previousParams = this._getPreviousParams();
       if (previousParams) {
-        var replacePrevious = (this.current.hash !== this.previousHash);
+        var replacePrevious = (!this.current.dest &&
+                               this.current.hash !== this.previousHash);
         this._pushToHistory(previousParams, false, replacePrevious);
       }
     }
     if (overwrite || this.uid === 0) {
-      window.history.replaceState(this._stateObj(params), '');
+      window.history.replaceState(this._stateObj(params), '', document.URL);
     } else {
-      window.history.pushState(this._stateObj(params), '');
+      window.history.pushState(this._stateObj(params), '', document.URL);
     }
     this.currentUid = this.uid++;
     this.current = params;
