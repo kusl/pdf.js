@@ -226,8 +226,8 @@ var Encodings = {
     'oacute', 'ocircumflex', 'otilde', 'odieresis', 'divide', 'oslash',
     'ugrave', 'uacute', 'ucircumflex', 'udieresis', 'yacute', 'thorn',
     'ydieresis'],
-  symbolsEncoding: ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
-    '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
+  SymbolSetEncoding: ['', '', '', '', '', '', '', '', '', '', '', '', '', '',
+    '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
     'space', 'exclam', 'universal', 'numbersign', 'existential', 'percent',
     'ampersand', 'suchthat', 'parenleft', 'parenright', 'asteriskmath', 'plus',
     'comma', 'minus', 'period', 'slash', 'zero', 'one', 'two', 'three', 'four',
@@ -3077,6 +3077,17 @@ var Font = (function FontClosure() {
           error('cmap table has unsupported format: ' + format);
         }
 
+        // removing duplicate entries
+        mappings.sort(function (a, b) {
+          return a.charcode - b.charcode;
+        });
+        for (var i = 1; i < mappings.length; i++) {
+          if (mappings[i - 1].charcode === mappings[i].charcode) {
+            mappings.splice(i, 1);
+            i--;
+          }
+        }
+
         return {
           platformId: potentialTable.platformId,
           encodingId: potentialTable.encodingId,
@@ -3152,8 +3163,8 @@ var Font = (function FontClosure() {
         for (var i = 0; i < flagsCount; i++) {
           var flag = glyf[j++];
           if (flag & 0xC0) {
-            // reserved flags must be zero, rejecting
-            return 0;
+            // reserved flags must be zero, cleaning up
+            glyf[j - 1] = flag & 0x3F;
           }
           var xyLength = ((flag & 2) ? 1 : (flag & 16) ? 0 : 2) +
                          ((flag & 4) ? 1 : (flag & 32) ? 0 : 2);
@@ -3163,6 +3174,10 @@ var Font = (function FontClosure() {
             i += repeat;
             coordinatesLength += repeat * xyLength;
           }
+        }
+        // glyph without coordinates will be rejected
+        if (coordinatesLength === 0) {
+          return 0;
         }
         var glyphDataLength = j + coordinatesLength;
         if (glyphDataLength > glyf.length) {
@@ -3262,6 +3277,13 @@ var Font = (function FontClosure() {
           };
         }
         var locaData = loca.data;
+        var locaDataSize = itemSize * (1 + numGlyphs);
+        // is loca.data too short or long?
+        if (locaData.length !== locaDataSize) {
+          locaData = new Uint8Array(locaDataSize);
+          locaData.set(loca.data.subarray(0, locaDataSize));
+          loca.data = locaData;
+        }
         // removing the invalid glyphs
         var oldGlyfData = glyf.data;
         var oldGlyfDataLength = oldGlyfData.length;
@@ -3305,9 +3327,7 @@ var Font = (function FontClosure() {
             glyf.data.set(newGlyfData.subarray(0, writeOffset));
           }
           glyf.data.set(newGlyfData.subarray(0, firstEntryLength), writeOffset);
-          loca.data = new Uint8Array(locaData.length + itemSize);
-          loca.data.set(locaData);
-          itemEncode(loca.data, locaData.length,
+          itemEncode(loca.data, locaData.length - itemSize,
                      writeOffset + firstEntryLength);
         } else {
           glyf.data = newGlyfData.subarray(0, writeOffset);
@@ -3507,6 +3527,11 @@ var Font = (function FontClosure() {
                 callstack.push({data: data, i: i, stackTop: stack.length - 1});
                 functionsCalled.push(funcId);
                 var pc = ttContext.functionsDefined[funcId];
+                if (!pc) {
+                  warn('TT: CALL non-existent function');
+                  ttContext.hintsValid = false;
+                  return;
+                }
                 data = pc.data;
                 i = pc.i;
               }
@@ -3527,6 +3552,11 @@ var Font = (function FontClosure() {
               lastEndf = i;
             } else {
               var pc = callstack.pop();
+              if (!pc) {
+                warn('TT: ENDF bad stack');
+                ttContext.hintsValid = false;
+                return;
+              }
               var funcId = functionsCalled.pop();
               data = pc.data;
               i = pc.i;
@@ -3626,7 +3656,7 @@ var Font = (function FontClosure() {
         }
       }
 
-      function sanitizeTTPrograms(fpgm, prep) {
+      function sanitizeTTPrograms(fpgm, prep, cvt) {
         var ttContext = {
           functionsDefined: [],
           functionsUsed: [],
@@ -3642,6 +3672,11 @@ var Font = (function FontClosure() {
         }
         if (fpgm) {
           checkInvalidFunctions(ttContext, maxFunctionDefs);
+        }
+        if (cvt && (cvt.length & 1)) {
+          var cvtData = new Uint8Array(cvt.length + 1);
+          cvtData.set(cvt.data);
+          cvt.data = cvtData;
         }
         return ttContext.hintsValid;
       }
@@ -3661,6 +3696,9 @@ var Font = (function FontClosure() {
         var table = readTableEntry(font);
         if (VALID_TABLES.indexOf(table.tag) < 0) {
           continue; // skipping table if it's not a required or optional table
+        }
+        if (table.length === 0) {
+          continue; // skipping empty tables
         }
         tables[table.tag] = table;
       }
@@ -3696,7 +3734,14 @@ var Font = (function FontClosure() {
       var numGlyphs = int16(font.getBytes(2));
       var maxFunctionDefs = 0;
       if (version >= 0x00010000 && tables.maxp.length >= 22) {
-        font.pos += 14;
+        // maxZones can be invalid
+        font.pos += 8;
+        var maxZones = int16(font.getBytes(2));
+        if (maxZones > 2) { // reset to 2 if font has invalid maxZones
+          tables.maxp.data[14] = 0;
+          tables.maxp.data[15] = 2;
+        }
+        font.pos += 4;
         maxFunctionDefs = int16(font.getBytes(2));
       }
 
@@ -3711,10 +3756,11 @@ var Font = (function FontClosure() {
       }
 
       var hintsValid = sanitizeTTPrograms(tables.fpgm, tables.prep,
-                                          maxFunctionDefs);
+                                          tables['cvt '], maxFunctionDefs);
       if (!hintsValid) {
         delete tables.fpgm;
         delete tables.prep;
+        delete tables['cvt '];
       }
 
       // Tables needs to be written by ascendant alphabetic order
@@ -3748,7 +3794,6 @@ var Font = (function FontClosure() {
       if (isTrueType) {
         var isGlyphLocationsLong = int16([tables.head.data[50],
                                           tables.head.data[51]]);
-
         sanitizeGlyphLocations(tables.loca, tables.glyf, numGlyphs,
                                isGlyphLocationsLong, hintsValid, dupFirstEntry);
       }
@@ -4552,8 +4597,10 @@ var Font = (function FontClosure() {
           var glyph = this.charToGlyph(charcode);
           glyphs.push(glyph);
           // placing null after each word break charcode (ASCII SPACE)
-          if (charcode == 0x20)
+          // Ignore occurences of 0x20 in multiple-byte codes.
+          if (length === 1 && chars.charCodeAt(i - 1) === 0x20) {
             glyphs.push(null);
+          }
         }
       }
       else {
@@ -5195,19 +5242,34 @@ var Type1Parser = (function Type1ParserClosure() {
 
               for (var j = 0; j < size; j++) {
                 var token = this.getToken();
-                if (token === 'dup') {
-                  var index = this.readInt();
-                  this.getToken(); // read in '/'
-                  var glyph = this.getToken();
-                  encoding[index] = glyph;
-                  this.getToken(); // read the in 'put'
+                // skipping till first dup or def (e.g. ignoring for statement)
+                while (token !== 'dup' && token !== 'def') {
+                  token = this.getToken();
+                  if (token === null) {
+                    return; // invalid header
+                  }
                 }
+                if (token === 'def') {
+                  break; // read all array data
+                }
+                var index = this.readInt();
+                this.getToken(); // read in '/'
+                var glyph = this.getToken();
+                encoding[index] = glyph;
+                this.getToken(); // read the in 'put'
               }
             }
             if (properties.overridableEncoding && encoding) {
               properties.baseEncoding = encoding;
               break;
             }
+            break;
+          case 'FontBBox':
+            var fontBBox = this.readNumberArray();
+            // adjusting ascent/descent
+            properties.ascent = fontBBox[3];
+            properties.descent = fontBBox[1];
+            properties.ascentScaled = true;
             break;
         }
       }
@@ -5291,13 +5353,33 @@ var CFFStandardStrings = [
 
 // Type1Font is also a CIDFontType0.
 var Type1Font = function Type1Font(name, file, properties) {
+  // Some bad generators embed pfb file as is, we have to strip 6-byte headers.
+  // Also, length1 and length2 might be off by 6 bytes as well.
+  // http://www.math.ubc.ca/~cass/piscript/type1.pdf
+  var PFB_HEADER_SIZE = 6;
+  var headerBlockLength = properties.length1;
+  var eexecBlockLength = properties.length2;
+  var pfbHeader = file.peekBytes(PFB_HEADER_SIZE);
+  var pfbHeaderPresent = pfbHeader[0] == 0x80 && pfbHeader[1] == 0x01;
+  if (pfbHeaderPresent) {
+    file.skip(PFB_HEADER_SIZE);
+    headerBlockLength = (pfbHeader[5] << 24) | (pfbHeader[4] << 16) |
+                        (pfbHeader[3] << 8) | pfbHeader[2];
+  }
+
   // Get the data block containing glyphs and subrs informations
-  var headerBlock = new Stream(file.getBytes(properties.length1));
+  var headerBlock = new Stream(file.getBytes(headerBlockLength));
   var headerBlockParser = new Type1Parser(headerBlock);
   headerBlockParser.extractFontHeader(properties);
 
+  if (pfbHeaderPresent) {
+    pfbHeader = file.getBytes(PFB_HEADER_SIZE);
+    eexecBlockLength = (pfbHeader[5] << 24) | (pfbHeader[4] << 16) |
+                       (pfbHeader[3] << 8) | pfbHeader[2];
+  }
+
   // Decrypt the data blocks and retrieve it's content
-  var eexecBlock = new Stream(file.getBytes(properties.length2));
+  var eexecBlock = new Stream(file.getBytes(eexecBlockLength));
   var eexecBlockParser = new Type1Parser(eexecBlock, true);
   var data = eexecBlockParser.extractFontProgram();
   for (var info in data.properties)
@@ -5529,6 +5611,9 @@ var CFFFont = (function CFFFontClosure() {
       var unassignedUnicodeItems = [];
       var inverseEncoding = [];
       var gidStart = 0;
+      if (charsets[0] === '.notdef') {
+        gidStart = 1;
+      }
       // According to section 9.7.4.2 CIDFontType0C glyph selection should be
       // handled differently.
       if (this.properties.subtype === 'CIDFontType0C') {
@@ -5560,9 +5645,6 @@ var CFFFont = (function CFFFontClosure() {
           } else {
             inverseEncoding[gid] = charcode | 0;
           }
-        }
-        if (charsets[0] === '.notdef') {
-          gidStart = 1;
         }
       }
 

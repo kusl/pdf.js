@@ -23,6 +23,15 @@
        "rounds": 1,
        "type": "text"
     },
+    {  "id": "issue3925",
+       "file": "pdfs/issue3925.pdf",
+       "md5": "c5c895deecf7a7565393587e0d61be2b",
+       "rounds": 1,
+       "link": true,
+       "firstPage": 1,
+       "lastPage": 1,
+       "type": "text"
+    },
     {  "id": "issue1293",
        "file": "pdfs/issue1293.pdf",
        "md5": "0a744b3bbf2fd8da0131fd3c01dd1e30",
@@ -32,6 +41,22 @@
        "lastPage": 1,
        "type": "load",
        "about": "PDF with undefined stream length."
+    },
+    {  "id": "issue3879",
+       "file": "pdfs/issue3879.pdf",
+       "md5": "1cd1f1c3271515a14e65ff2980e14663",
+       "rounds": 1,
+       "link": true,
+       "firstPage": 2,
+       "lastPage": 2,
+       "type": "eq"
+    },
+    {  "id": "issue2833",
+       "file": "pdfs/issue2833.pdf",
+       "md5": "7bc6e17c41586155c188d7408bcb9ab5",
+       "rounds": 1,
+       "lastPage": 1,
+       "type": "eq"
     },
     {  "id": "issue2881",
        "file": "pdfs/issue2881.pdf",
@@ -179,6 +204,12 @@
     {  "id": "complexttffont-pdf",
        "file": "pdfs/complex_ttf_font.pdf",
        "md5": "76de93f9116b01b693bf8583b3e76d91",
+       "rounds": 1,
+       "type": "load"
+    },
+    {  "id": "bug868745",
+       "file": "pdfs/bug868745.pdf",
+       "md5": "86111ea5097dd7daffcdea891ad1b348",
        "rounds": 1,
        "type": "load"
     },
@@ -589,6 +620,15 @@
       "link": true,
       "type": "eq"
     },
+    {  "id": "issue3848",
+      "file": "pdfs/issue3848.pdf",
+      "md5": "2498cf0650cc97ceca3e24dfa0425a73",
+      "rounds": 1,
+      "lastPage": 1,
+      "link": true,
+      "type": "load",
+      "about": "Document tree with pages and page nodes on the same level."
+    },
     {  "id": "issue1015",
       "file": "pdfs/issue1015.pdf",
       "md5": "b61503d1b445742b665212866afb60e2",
@@ -724,6 +764,13 @@
       "lastPage": 1,
       "link": true,
       "type": "load"
+    },
+    {  "id": "bug860632",
+      "file": "pdfs/bug860632.pdf",
+      "md5": "b3cabf9249c8fee76f61f6b3b7fdd5fd",
+      "rounds": 1,
+      "lastPage": 1,
+      "type": "eq"
     },
     {  "id": "issue1466",
       "file": "pdfs/issue1466.pdf",
@@ -918,6 +965,14 @@
       "link": true,
       "type": "eq"
     },
+    {  "id": "issue3405",
+      "file": "pdfs/issue3405.pdf",
+      "md5": "58bd4bf790f15f849d1c932e3eda0406",
+      "rounds": 1,
+      "lastPage": 1,
+      "link": true,
+      "type": "eq"
+    },
     {  "id": "issue2006",
       "file": "pdfs/issue2006.pdf",
       "md5": "71ec73831ece9b508ad20efa6ff28642",
@@ -1017,6 +1072,13 @@
       "rounds": 1,
       "link": true,
       "type": "load"
+    },
+    { "id": "bigboundingbox",
+      "file": "pdfs/bigboundingbox.pdf",
+      "md5": "e5c5e2cb80826d6ebf535413865270cd",
+      "rounds": 1,
+      "type": "eq",
+      "about": "When the bounding box for the xobject is transformed it creates a huge bounding box."
     },
     {  "id": "issue2386",
       "file": "pdfs/issue2386.pdf",
@@ -1266,6 +1328,12 @@
       "rounds": 1,
       "type": "eq"
     },
+    {  "id": "issue3438",
+      "file": "pdfs/issue3438.pdf",
+      "md5": "5aa3340b0920b65a377f697587668f89",
+      "rounds": 1,
+      "type": "eq"
+    },
     {  "id": "bug886717",
       "file": "pdfs/bug886717.pdf",
       "md5": "8ba614192797a1324765610231a1bc9d",
@@ -1328,6 +1396,12 @@
       "rounds": 1,
       "type": "eq"
     },
+    {  "id": "issue1171.pdf",
+       "file": "pdfs/issue1171.pdf",
+       "md5": "2a6188a42a5874c7874b88eebd4acaf0",
+       "rounds": 1,
+       "type": "eq"
+    },
     {  "id": "issue3521.pdf",
        "file": "pdfs/issue3521.pdf",
        "md5": "df95d31443e20a38efa29c3a635a045b",
@@ -1348,6 +1422,20 @@
       "rounds": 1,
       "type": "eq"
     },
+    {  "id": "issue2799",
+      "file": "pdfs/issue2799.pdf",
+      "md5": "3d3224eae54bbae5fc76224a2af49486",
+      "rounds": 1,
+      "lastPage": 1,
+      "link": true,
+      "type": "eq"
+    },
+    {  "id": "issue3025",
+      "file": "pdfs/issue3025.pdf",
+      "md5": "8e4e8eacbd7c4c248deeca0ec49d38da",
+      "rounds": 1,
+      "type": "eq"
+    },
     {  "id": "issue2177-eq",
       "file": "pdfs/issue2177.pdf",
       "md5": "48a808278bf31de8414c4e03ecd0900a",
@@ -1362,6 +1450,18 @@
        "firstPage": 1,
        "lastPage": 1,
        "type": "eq"
+    },
+    {  "id": "calgray",
+       "file": "pdfs/calgray.pdf",
+       "md5": "ee784999bfa1ed373f55cdabbb580df1",
+       "rounds": 1,
+       "type": "eq"
+    },
+    {  "id": "bug900822",
+       "file": "pdfs/bug900822.pdf",
+       "md5": "70e2a3c5922574eeda169c955cf9d084",
+       "rounds": 1,
+       "type": "load"
     },
     {  "id": "issue2853",
        "file": "pdfs/issue2853.pdf",
@@ -1379,6 +1479,23 @@
        "link": true,
        "firstPage": 1,
        "lastPage": 2,
+       "type": "eq"
+    },
+    {  "id": "bug903856",
+       "file": "pdfs/bug903856.pdf",
+       "md5": "286eaa9d06a5809f4f08f2093cef8f3f",
+       "rounds": 1,
+       "firstPage": 1,
+       "lastPage": 1,
+       "type": "eq"
+    },
+    {  "id": "issue3205",
+       "file": "pdfs/issue3205.pdf",
+       "md5": "e833326f69f2fdf7c1c8438fe1d3b622",
+       "rounds": 1,
+       "link": true,
+       "firstPage": 4,
+       "lastPage": 4,
        "type": "eq"
     }
 ]

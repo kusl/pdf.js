@@ -17,7 +17,7 @@
 /* globals assertWellFormed, calculateMD5, Catalog, error, info, isArray,
            isArrayBuffer, isName, isStream, isString, Lexer,
            Linearization, NullStream, PartialEvaluator, shadow, Stream,
-           StreamsSequenceStream, stringToPDFString, Util, XRef,
+           StreamsSequenceStream, stringToPDFString, stringToBytes, Util, XRef,
            MissingDataException, Promise, Annotation, ObjectLoader, OperatorList
            */
 
@@ -25,12 +25,13 @@
 
 var Page = (function PageClosure() {
 
-  function Page(pdfManager, xref, pageIndex, pageDict, ref) {
+  function Page(pdfManager, xref, pageIndex, pageDict, ref, fontCache) {
     this.pdfManager = pdfManager;
     this.pageIndex = pageIndex;
     this.pageDict = pageDict;
     this.xref = xref;
     this.ref = ref;
+    this.fontCache = fontCache;
     this.idCounters = {
       obj: 0
     };
@@ -160,7 +161,7 @@ var Page = (function PageClosure() {
       var partialEvaluator = new PartialEvaluator(
             pdfManager, this.xref, handler,
             this.pageIndex, 'p' + this.pageIndex + '_',
-            this.idCounters);
+            this.idCounters, this.fontCache);
 
       var dataPromises = Promise.all(
           [contentStreamPromise, resourcesPromise], reject);
@@ -184,7 +185,6 @@ var Page = (function PageClosure() {
         var annotations = datas[1];
 
         if (annotations.length === 0) {
-          PartialEvaluator.optimizeQueue(pageOpList);
           pageOpList.flush(true);
           promise.resolve(pageOpList);
           return;
@@ -193,7 +193,6 @@ var Page = (function PageClosure() {
         var annotationsReadyPromise = Annotation.appendToOperatorList(
           annotations, pageOpList, pdfManager, partialEvaluator);
         annotationsReadyPromise.then(function () {
-          PartialEvaluator.optimizeQueue(pageOpList);
           pageOpList.flush(true);
           promise.resolve(pageOpList);
         }, reject);
@@ -228,7 +227,7 @@ var Page = (function PageClosure() {
         var partialEvaluator = new PartialEvaluator(
               pdfManager, self.xref, handler,
               self.pageIndex, 'p' + self.pageIndex + '_',
-              self.idCounters);
+              self.idCounters, self.fontCache);
 
         var bidiTexts = partialEvaluator.getTextContent(contentStream,
                                                         self.resources);
@@ -481,33 +480,27 @@ var PDFDocument = (function PDFDocumentClosure() {
       return shadow(this, 'documentInfo', docInfo);
     },
     get fingerprint() {
-      var xref = this.xref, fileID;
+      var xref = this.xref, hash, fileID = '';
+
       if (xref.trailer.has('ID')) {
-        fileID = '';
-        var id = xref.trailer.get('ID')[0];
-        id.split('').forEach(function(el) {
-          fileID += Number(el.charCodeAt(0)).toString(16);
-        });
+        hash = stringToBytes(xref.trailer.get('ID')[0]);
       } else {
-        // If we got no fileID, then we generate one,
-        // from the first 100 bytes of PDF
-        var data = this.stream.bytes.subarray(0, 100);
-        var hash = calculateMD5(data, 0, data.length);
-        fileID = '';
-        for (var i = 0, length = hash.length; i < length; i++) {
-          fileID += Number(hash[i]).toString(16);
-        }
+        hash = calculateMD5(this.stream.bytes.subarray(0, 100), 0, 100);
+      }
+
+      for (var i = 0, n = hash.length; i < n; i++) {
+        fileID += hash[i].toString(16);
       }
 
       return shadow(this, 'fingerprint', fileID);
     },
 
-    traversePages: function PDFDocument_traversePages() {
-      this.catalog.traversePages();
-    },
-
     getPage: function PDFDocument_getPage(pageIndex) {
       return this.catalog.getPage(pageIndex);
+    },
+
+    cleanup: function PDFDocument_cleanup() {
+      return this.catalog.cleanup();
     }
   };
 
